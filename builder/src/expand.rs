@@ -25,7 +25,7 @@ pub(crate) fn expand(ast: DeriveInput) -> Result<TokenStream2, syn::Error> {
     Ok(expanded)
 }
 
-fn expand_builder(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
+fn expand_builder(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
     let struct_def = expand_builder_struct(builder_ident, fields);
     let impl_block = expand_builder_impl(original_ident, builder_ident, fields);
     
@@ -36,7 +36,7 @@ fn expand_builder(original_ident: &syn::Ident, builder_ident: &syn::Ident, field
     }
 }
 
-fn expand_builder_impl(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
+fn expand_builder_impl(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
     let fields_init: Vec<TokenStream2> = fields
         .iter()
         // TODO: Do error propogating instead of flat_map (which throws away any errors)
@@ -77,7 +77,7 @@ fn expand_build_method(original_ident: &syn::Ident, _builder_ident: &syn::Ident,
     }
 }
 
-fn expand_builder_struct(builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
+fn expand_builder_struct(builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
     let builder_fields: Vec<TokenStream2> = fields
         .iter()
         // TODO: Do error propogating instead of flat_map (which throws away any errors)
