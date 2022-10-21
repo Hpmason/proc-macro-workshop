@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use proc_macro2::{TokenStream as TokenStream2, Span, Ident};
-use syn::{DeriveInput, parse_macro_input, Type, TypePath, punctuated::Punctuated, PathSegment, token::Colon2, Token};
+use proc_macro2::{TokenStream as TokenStream2};
+use syn::{DeriveInput, parse_macro_input, Type};
 use quote::{quote, format_ident};
 
 #[proc_macro_derive(Builder)]
@@ -75,12 +75,6 @@ fn expand_builder_impl(builder_ident: &syn::Ident, fields: &Vec<Field>) -> Token
     }
 }
 
-fn expand_setters(fields: Vec<Field>) -> TokenStream2 {
-    quote! {
-        impl 
-    }
-}
-
 struct Field<'a> {
     field_ident: &'a proc_macro2::Ident,
     field_type: &'a Type,
@@ -114,13 +108,7 @@ impl<'a> Field<'a> {
             field_type: &field.ty,
         })
     }
-    fn as_token_stream(&self) -> Result<TokenStream2, syn::Error> {
-        let ident = self.field_ident;
-        let ty = self.field_type;
-        Ok(quote! {
-            #ident: #ty
-        })
-    }
+    
     fn as_optional_field(&self) -> Result<TokenStream2, syn::Error> {
         let ident = self.field_ident;
         let ty = self.field_type;
@@ -130,7 +118,7 @@ impl<'a> Field<'a> {
     }
     fn as_optional_init(&self) -> Result<TokenStream2, syn::Error> {
         let ident = self.field_ident;
-        let ty = self.field_type;
+        let _ty = self.field_type;
         Ok(quote! {
             #ident: None
         })
