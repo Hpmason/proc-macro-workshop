@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2};
 use syn::{DeriveInput, parse_macro_input, Type};
-use quote::{quote, format_ident};
+use quote::{quote, format_ident, quote_spanned};
 
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
@@ -75,7 +75,7 @@ fn expand_build_method(original_ident: &syn::Ident, _builder_ident: &syn::Ident,
         .flat_map(Field::as_build_init)
         .collect();
     quote! {
-        fn build(self) -> Result<#original_ident, Box<dyn std::error::Error>> {
+        fn build(&mut self) -> Result<#original_ident, Box<dyn std::error::Error>> {
             Ok(#original_ident {
                 #(#field_inits),*
             })
@@ -103,7 +103,7 @@ struct Field<'a> {
 
 impl<'a> Field<'a> {
     fn get_multiple_from_ast(ast: &'a DeriveInput) -> Result<Vec<Self>, syn::Error> {
-        println!("{:#?}", ast.data);
+        // println!("{:#?}", ast.data);
         match ast.data {
             syn::Data::Struct(ref data) => {
                 match data.fields {
@@ -145,16 +145,20 @@ impl<'a> Field<'a> {
     }
     fn as_build_init(&self) -> Result<TokenStream2, syn::Error> {
         let ident = self.field_ident;
+        let clone_statement = quote_spanned!(ident.span()=>
+            #ident.clone()
+        );
         Ok(quote! {
-            #ident: self.#ident.ok_or(String::from(concat!("{} was not set", stringify!(#ident))))?
+            #ident: self.#clone_statement.ok_or(String::from(concat!("{} was not set", stringify!(#ident))))?
         })
     }
     fn as_setter(&self) -> Result<TokenStream2, syn::Error> {
         let ident = self.field_ident;
         let ty = self.field_type;
         Ok(quote! {
-            fn #ident(&mut self, val: #ty) {
+            fn #ident(&mut self, val: #ty) -> &mut Self {
                 self.#ident = Some(val);
+                self
             }
         })
     }
