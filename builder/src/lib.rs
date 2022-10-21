@@ -8,7 +8,6 @@ use syn::{parse_macro_input, DeriveInput};
 pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let stream = expand::expand(ast)
-        .map_err(|err| err.to_compile_error())
-        .unwrap();
+        .unwrap_or_else(syn::Error::into_compile_error);
     stream.into()
 }
