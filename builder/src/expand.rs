@@ -1,11 +1,8 @@
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 use syn::DeriveInput;
 
 use crate::structs::Field;
-
-
-
 
 pub(crate) fn expand(ast: DeriveInput) -> Result<TokenStream2, syn::Error> {
     // println!("{:#?}", ast);
@@ -25,10 +22,14 @@ pub(crate) fn expand(ast: DeriveInput) -> Result<TokenStream2, syn::Error> {
     Ok(expanded)
 }
 
-fn expand_builder(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
+fn expand_builder(
+    original_ident: &syn::Ident,
+    builder_ident: &syn::Ident,
+    fields: &[Field],
+) -> TokenStream2 {
     let struct_def = expand_builder_struct(builder_ident, fields);
     let impl_block = expand_builder_impl(original_ident, builder_ident, fields);
-    
+
     quote! {
         #struct_def
 
@@ -36,16 +37,17 @@ fn expand_builder(original_ident: &syn::Ident, builder_ident: &syn::Ident, field
     }
 }
 
-fn expand_builder_impl(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
+fn expand_builder_impl(
+    original_ident: &syn::Ident,
+    builder_ident: &syn::Ident,
+    fields: &[Field],
+) -> TokenStream2 {
     let fields_init: Vec<TokenStream2> = fields
         .iter()
         // TODO: Do error propogating instead of flat_map (which throws away any errors)
         .flat_map(Field::as_optional_init)
         .collect();
-    let field_setters: Vec<TokenStream2> = fields
-        .iter()
-        .flat_map(Field::as_setter)
-        .collect();
+    let field_setters: Vec<TokenStream2> = fields.iter().flat_map(Field::as_setter).collect();
     let build_fn = expand_build_method(original_ident, builder_ident, fields);
     quote! {
         impl #builder_ident {
@@ -54,7 +56,7 @@ fn expand_builder_impl(original_ident: &syn::Ident, builder_ident: &syn::Ident, 
                     #(#fields_init),*
                 }
             }
-            
+
             #build_fn
 
             #(#field_setters)*
@@ -62,12 +64,12 @@ fn expand_builder_impl(original_ident: &syn::Ident, builder_ident: &syn::Ident, 
     }
 }
 
-
-fn expand_build_method(original_ident: &syn::Ident, _builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
-    let field_inits: Vec<TokenStream2> = fields
-        .iter()
-        .flat_map(Field::as_build_init)
-        .collect();
+fn expand_build_method(
+    original_ident: &syn::Ident,
+    _builder_ident: &syn::Ident,
+    fields: &[Field],
+) -> TokenStream2 {
+    let field_inits: Vec<TokenStream2> = fields.iter().flat_map(Field::as_build_init).collect();
     quote! {
         fn build(&mut self) -> Result<#original_ident, Box<dyn std::error::Error>> {
             Ok(#original_ident {

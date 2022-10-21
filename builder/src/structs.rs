@@ -1,8 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
-use syn::{Type, DeriveInput};
 use quote::{quote, quote_spanned};
-
-
+use syn::{DeriveInput, Type};
 
 pub(crate) struct Field<'a> {
     field_ident: &'a proc_macro2::Ident,
@@ -13,25 +11,23 @@ impl<'a> Field<'a> {
     pub(crate) fn get_multiple_from_ast(ast: &'a DeriveInput) -> Result<Vec<Self>, syn::Error> {
         // println!("{:#?}", ast.data);
         match ast.data {
-            syn::Data::Struct(ref data) => {
-                match data.fields {
-                    syn::Fields::Named(ref name_fields) => {
-                        let mut fields = Vec::new();
-                        for field in &name_fields.named {
-                            fields.push(Self::get_field_from_syn(field)?);
-                        }
-                        Ok(fields)
-                    },
-                    syn::Fields::Unnamed(_) => panic!("tuple structs not supported"),
-                    syn::Fields::Unit => panic!("unit structs not supported"),
+            syn::Data::Struct(ref data) => match data.fields {
+                syn::Fields::Named(ref name_fields) => {
+                    let mut fields = Vec::new();
+                    for field in &name_fields.named {
+                        fields.push(Self::get_field_from_syn(field)?);
+                    }
+                    Ok(fields)
                 }
+                syn::Fields::Unnamed(_) => panic!("tuple structs not supported"),
+                syn::Fields::Unit => panic!("unit structs not supported"),
             },
             // TODO: Add proper compiler error message on struct keyword
             syn::Data::Enum(_) => panic!("enum is not supported"),
             syn::Data::Union(_) => panic!("enum is not supported"),
         }
     }
-    pub(crate) fn get_field_from_syn(field: &'a syn::Field) -> Result<Self, syn::Error>{
+    pub(crate) fn get_field_from_syn(field: &'a syn::Field) -> Result<Self, syn::Error> {
         Ok(Self {
             field_ident: field.ident.as_ref().unwrap(),
             field_type: &field.ty,
