@@ -19,7 +19,7 @@ fn expand(ast: DeriveInput) -> Result<TokenStream2, syn::Error> {
     let fields = Field::get_multiple_from_ast(&ast)?;
     // Get identifier for our builder struct. Need for builer impl and original struct's builder method
     let builder_ident = format_ident!("{struct_ident}Builder");
-    let builder_struct = expand_builder(&builder_ident, &fields);
+    let builder_struct = expand_builder(struct_ident, &builder_ident, &fields);
     let expanded = quote! {
         impl #struct_ident {
             fn builder() -> #builder_ident {
@@ -31,13 +31,55 @@ fn expand(ast: DeriveInput) -> Result<TokenStream2, syn::Error> {
     Ok(expanded)
 }
 
-fn expand_builder(builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
-    let struct_def = expand_builder_struct(&builder_ident, fields);
-    let impl_block = expand_builder_impl(builder_ident, fields);
+fn expand_builder(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
+    let struct_def = expand_builder_struct(builder_ident, fields);
+    let impl_block = expand_builder_impl(original_ident, builder_ident, fields);
+    
     quote! {
         #struct_def
 
         #impl_block
+    }
+}
+
+fn expand_builder_impl(original_ident: &syn::Ident, builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
+    let fields_init: Vec<TokenStream2> = fields
+        .iter()
+        // TODO: Do error propogating instead of flat_map (which throws away any errors)
+        .flat_map(Field::as_optional_init)
+        .collect();
+    let field_setters: Vec<TokenStream2> = fields
+        .iter()
+        .flat_map(Field::as_setter)
+        .collect();
+    let build_fn = expand_build_method(original_ident, builder_ident, fields);
+    quote! {
+        impl #builder_ident {
+            fn new() -> #builder_ident {
+                #builder_ident {
+                    #(#fields_init),*
+                }
+            }
+            
+            #build_fn
+
+            #(#field_setters)*
+        }
+    }
+}
+
+
+fn expand_build_method(original_ident: &syn::Ident, _builder_ident: &syn::Ident, fields: &[Field]) -> TokenStream2 {
+    let field_inits: Vec<TokenStream2> = fields
+        .iter()
+        .flat_map(Field::as_build_init)
+        .collect();
+    quote! {
+        fn build(self) -> Result<#original_ident, Box<dyn std::error::Error>> {
+            Ok(#original_ident {
+                #(#field_inits),*
+            })
+        }
     }
 }
 
@@ -50,27 +92,6 @@ fn expand_builder_struct(builder_ident: &syn::Ident, fields: &Vec<Field>) -> Tok
     quote! {
         struct #builder_ident {
             #(#builder_fields),*
-        }
-    }
-}
-fn expand_builder_impl(builder_ident: &syn::Ident, fields: &Vec<Field>) -> TokenStream2 {
-    let fields_init: Vec<TokenStream2> = fields
-        .iter()
-        // TODO: Do error propogating instead of flat_map (which throws away any errors)
-        .flat_map(Field::as_optional_init)
-        .collect();
-    let field_setters: Vec<TokenStream2> = fields
-        .iter()
-        .flat_map(Field::as_setter)
-        .collect();
-    quote! {
-        impl #builder_ident {
-            fn new() -> #builder_ident {
-                #builder_ident {
-                    #(#fields_init),*
-                }
-            }
-            #(#field_setters)*
         }
     }
 }
@@ -108,7 +129,7 @@ impl<'a> Field<'a> {
             field_type: &field.ty,
         })
     }
-    
+
     fn as_optional_field(&self) -> Result<TokenStream2, syn::Error> {
         let ident = self.field_ident;
         let ty = self.field_type;
@@ -118,9 +139,14 @@ impl<'a> Field<'a> {
     }
     fn as_optional_init(&self) -> Result<TokenStream2, syn::Error> {
         let ident = self.field_ident;
-        let _ty = self.field_type;
         Ok(quote! {
             #ident: None
+        })
+    }
+    fn as_build_init(&self) -> Result<TokenStream2, syn::Error> {
+        let ident = self.field_ident;
+        Ok(quote! {
+            #ident: self.#ident.ok_or(String::from(concat!("{} was not set", stringify!(#ident))))?
         })
     }
     fn as_setter(&self) -> Result<TokenStream2, syn::Error> {
