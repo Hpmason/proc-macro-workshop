@@ -2,7 +2,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, quote_spanned};
 use syn::{DeriveInput, spanned::Spanned};
 
-use crate::structs::{Field, Struct};
+use crate::structs::Struct;
 
 pub(crate) fn expand(ast: DeriveInput) -> Result<TokenStream2, syn::Error> {
     let struct_data = Struct::from_syn(&ast)?;
@@ -55,7 +55,7 @@ fn expand_builder_struct(struct_data: &Struct) -> TokenStream2 {
 fn expand_builder(
     struct_data: &Struct,
 ) -> TokenStream2 {
-    let impl_block = expand_builder_impl(&struct_data);
+    let impl_block = expand_builder_impl(struct_data);
     
     quote! {
         #impl_block
@@ -95,7 +95,7 @@ fn expand_builder_impl(
             }
         }).collect();
     
-    let build_fn = expand_build_method(&struct_data);
+    let build_fn = expand_build_method(struct_data);
 
     let builder_ident = struct_data.to_builder_ident();
     quote! {

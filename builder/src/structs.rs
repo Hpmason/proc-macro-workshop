@@ -18,7 +18,7 @@ impl<'a> Struct<'a> {
         Ok(Self {
             original: ast,
             ident: &ast.ident,
-            fields: Field::multiple_from_syn(&ast)?,
+            fields: Field::multiple_from_syn(ast)?,
         })
     }
 
